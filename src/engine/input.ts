@@ -1,9 +1,11 @@
 export default class Input{
     xyInput:Array<number>;
+    mouseX:number;
     keysPressed:Record<string,boolean>={};
 
     constructor(){
         this.xyInput=[0,0];
+        this.mouseX=0;
 
         document.addEventListener("keydown",(e:KeyboardEvent)=>{
             this.keysPressed[e.key.toLowerCase()]=true;
@@ -12,11 +14,13 @@ export default class Input{
         document.addEventListener("keyup", (e: KeyboardEvent) => {
             this.keysPressed[e.key.toLowerCase()] = false;
         });
+
+        document.addEventListener("mousemove", (e: MouseEvent) => {
+            this.mouseX=-1*e.movementX; 
+        });
     }
 
     checkInput(){
-        
-
         if(this.keysPressed['w'])this.xyInput[0]+=1;
         if(this.keysPressed['s'])this.xyInput[0]-=1;
         if(this.keysPressed['d'])this.xyInput[1]+=1;
@@ -29,10 +33,11 @@ export default class Input{
             this.xyInput[1]=this.xyInput[1]/magnitude;
         }
 
-        const result = [...this.xyInput];
+        const result = [...this.xyInput,this.mouseX];
 
         this.xyInput[0] = 0;
         this.xyInput[1] = 0;
+        this.mouseX=0;
 
         return result;
     }
