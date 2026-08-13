@@ -9,64 +9,77 @@ export default class game{
     player:Player;
     input:Input;
     canvas:Canvas|null=null;
-    // map: number[][] = [
-    //     [1,1,1,1,1,1,1,1,1,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,0,0,0,0,0,0,0,0,1],
-    //     [1,1,1,1,1,1,1,1,1,1]
-    // ];
-
     map: number[][] = [
         [1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,1,0,0,0,0,1],
-        [1,0,1,0,1,0,1,1,0,1],
-        [1,0,1,0,0,0,1,0,0,1],
-        [1,0,1,1,1,0,1,0,1,1],
-        [1,0,0,0,1,0,0,0,0,1],
-        [1,1,1,0,1,1,1,1,0,1],
-        [1,0,0,0,0,0,0,1,0,1],
-        [1,0,1,1,1,1,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,1],
+        [1,0,1,0,0,0,0,0,0,1],
         [1,1,1,1,1,1,1,1,1,1]
     ];
+
+    // map: number[][] = [
+    //     [1,1,1,1,1,1,1,1,1],
+    //     [1,0,0,0,1,0,0,0,0],
+    //     [1,0,1,0,1,0,1,1,0],
+    //     [1,0,1,0,0,0,1,0,0],
+    //     [1,0,1,1,1,0,1,0,1],
+    //     [1,0,0,0,1,0,0,0,0],
+    //     [1,1,1,0,1,1,1,1,0],
+    //     [1,0,0,0,0,0,0,1,0],
+    //     [1,0,1,1,1,1,0,0,0],
+    //     [1,1,1,1,1,1,1,1,1]
+    // ];
 
     constructor(){
         this.prevTimeStamp=Math.floor(Date.now());
         this.running=false;
 
-        this.player=new Player(1.1,1.1,0,0.25);
+        this.player=new Player(1.1,1.1,0,0.05,60);
         this.input=new Input();
     }
 
-    movementValidator(direction:Array<number>,player:Player,map:number[][]){
+    movementValidator(direction: Array<number>, player: Player, map: number[][]) {
+        const forward = direction[0] * player.speed; // W/S (+1 / -1)
+        const side = direction[1] * player.speed;    // D/A (+1 / -1)
 
-        const forward = direction[0] * player.speed;
-        const side = direction[1] * player.speed;
+        const rad = (player.angle * Math.PI) / 180;
 
-        let dirx:number=Math.sin(player.angle*Math.PI/180)*forward-
-            Math.cos(player.angle*Math.PI/180)*side;
+        let dirx = Math.cos(rad) * forward + Math.sin(rad) * side;
+        let diry = -Math.sin(rad) * forward + Math.cos(rad) * side;
 
-        let diry:number=Math.cos(player.angle*Math.PI/180)*forward+
-            Math.sin(player.angle*Math.PI/180)*side;
+        // Boundary & Collision Check: X axis
+        const newX = player.x + dirx;
+        const targetXCell = Math.floor(newX);
+        const currentYCell = Math.floor(player.y);
 
-        if(map[Math.floor(player.x+dirx)][Math.floor(player.y)]==1){
+        if (
+            targetXCell >= 0 &&
+            targetXCell < map[0].length &&
+            map[currentYCell][targetXCell] !== 1
+        ) {
+            this.player.x = newX;
         }
-        else{
-            this.player.x+=dirx;
+
+        // Boundary & Collision Check: Y axis
+        const newY = player.y + diry;
+        const targetYCell = Math.floor(newY);
+        const currentXCell = Math.floor(player.x);
+
+        if (
+            targetYCell >= 0 &&
+            targetYCell < map.length &&
+            map[targetYCell][currentXCell] !== 1
+        ) {
+            this.player.y = newY;
         }
 
-        if(map[Math.floor(player.x)][Math.floor(player.y+diry)]==1){
-        }
-        else{
-            this.player.y+=diry;
-        }
-
-        this.player.angle=(player.angle+direction[2]+360)%360;
+        // Mouse look / Turning
+        this.player.angle = (player.angle - direction[2] + 360) % 360;
     }
 
     loop=()=>{
@@ -74,15 +87,17 @@ export default class game{
 
         const currTimeStamp=Math.floor(Date.now());
 
-        if(currTimeStamp-this.prevTimeStamp>=100){
+        if(currTimeStamp-this.prevTimeStamp>=3){
             
             let direction=this.input.checkInput();
 
             this.movementValidator(direction,this.player,this.map);
 
-            this.canvas?.render(this.map,this.player);
-
             console.clear();
+            
+            this.canvas?.renderRaycasting(this.map,this.player);
+            this.canvas?.renderMinimap(this.map,this.player);
+            
             console.log(this.player);
  
             this.prevTimeStamp=currTimeStamp;

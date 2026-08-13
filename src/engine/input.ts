@@ -16,7 +16,7 @@ export default class Input{
         });
 
         document.addEventListener("mousemove", (e: MouseEvent) => {
-            this.mouseX=-1*e.movementX; 
+            this.mouseX=e.movementX; 
         });
     }
 
