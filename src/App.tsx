@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Game from "./engine/game";
+import OptionsPanel from "./components/OptionsPanel";
 
 export default function App() {
     const gameRef = useRef(new Game());
@@ -7,6 +8,11 @@ export default function App() {
 
     const [screen, setScreen] = useState<"menu" | "game" | "options">("menu");
     const [paused, setPaused] = useState(false);
+    const [pauseOptions, setPauseOptions] = useState(false);
+    const [speed, setSpeed] = useState(4);
+    const [masterVolume, setMasterVolume] = useState(0.5);
+    const [ambienceVolume, setAmbienceVolume] = useState(1);
+    const [effectsVolume, setEffectsVolume] = useState(1);
 
     const game = gameRef.current;
 
@@ -17,6 +23,27 @@ export default function App() {
             game.onPauseChange = null;
         };
     }, [game]);
+
+    useEffect(() => {
+        if (screen !== "game") void game.audio.enterScene("menu");
+    }, [game, screen]);
+
+    const changeSpeed = (value: number) => {
+        setSpeed(value);
+        game.player.speed = value;
+    };
+    const changeMasterVolume = (value: number) => {
+        setMasterVolume(value);
+        game.audio.setMasterVolume(value);
+    };
+    const changeAmbienceVolume = (value: number) => {
+        setAmbienceVolume(value);
+        game.audio.setAmbienceVolume(value);
+    };
+    const changeEffectsVolume = (value: number) => {
+        setEffectsVolume(value);
+        game.audio.setEffectsVolume(value);
+    };
 
     useEffect(() => {
         if (screen === "game" && canvasRef.current) {
@@ -40,7 +67,22 @@ export default function App() {
                         bg-black/70
                         flex items-center justify-center
                     ">
-                        <div className="w-96 text-center">
+                        {pauseOptions ? (
+                            <OptionsPanel
+                                speed={speed}
+                                masterVolume={masterVolume}
+                                ambienceVolume={ambienceVolume}
+                                effectsVolume={effectsVolume}
+                                onSpeedChange={changeSpeed}
+                                onMasterVolumeChange={changeMasterVolume}
+                                onAmbienceVolumeChange={changeAmbienceVolume}
+                                onEffectsVolumeChange={changeEffectsVolume}
+                                onBack={() => {
+                                    void game.audio.buttonClick();
+                                    setPauseOptions(false);
+                                }}
+                            />
+                        ) : <div className="w-96 text-center">
 
                             <h1 className="
                                 text-5xl
@@ -55,7 +97,10 @@ export default function App() {
                             <div className="flex flex-col gap-4">
 
                                 <button
-                                    onClick={() => game.resume()}
+                                    onClick={() => {
+                                        void game.audio.buttonClick();
+                                        game.resume();
+                                    }}
                                     className="
                                         w-full py-4
                                         bg-zinc-900
@@ -70,8 +115,27 @@ export default function App() {
 
                                 <button
                                     onClick={() => {
+                                        void game.audio.buttonClick();
+                                        setPauseOptions(true);
+                                    }}
+                                    className="
+                                        w-full py-4
+                                        bg-zinc-900
+                                        border border-zinc-700
+                                        text-zinc-200
+                                        tracking-widest
+                                        hover:bg-zinc-800
+                                    "
+                                >
+                                    OPTIONS
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        void game.audio.buttonClick();
                                         game.stop();
                                         setPaused(false);
+                                        setPauseOptions(false);
                                         setScreen("menu");
                                     }}
                                     className="
@@ -87,7 +151,7 @@ export default function App() {
                                 </button>
 
                             </div>
-                        </div>
+                        </div>}
                     </div>
                 )}
             </div>
@@ -96,26 +160,21 @@ export default function App() {
 
     if (screen === "options") {
         return (
-            <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center">
-                <div className="w-96 text-center">
-
-                    <h1 className="text-4xl text-white tracking-widest mb-10">
-                        OPTIONS
-                    </h1>
-
-                    <button
-                        onClick={() => setScreen("menu")}
-                        className="
-                            w-full py-4
-                            border border-zinc-700
-                            text-zinc-200
-                            hover:bg-zinc-800
-                        "
-                    >
-                        BACK
-                    </button>
-
-                </div>
+            <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center px-4">
+                <OptionsPanel
+                    speed={speed}
+                    masterVolume={masterVolume}
+                    ambienceVolume={ambienceVolume}
+                    effectsVolume={effectsVolume}
+                    onSpeedChange={changeSpeed}
+                    onMasterVolumeChange={changeMasterVolume}
+                    onAmbienceVolumeChange={changeAmbienceVolume}
+                    onEffectsVolumeChange={changeEffectsVolume}
+                    onBack={() => {
+                        void game.audio.buttonClick();
+                        setScreen("menu");
+                    }}
+                />
             </div>
         );
     }
@@ -147,7 +206,10 @@ export default function App() {
                 <div className="flex flex-col gap-4">
 
                     <button
-                        onClick={() => setScreen("game")}
+                        onClick={() => {
+                            void game.audio.buttonClick();
+                            setScreen("game");
+                        }}
                         className="
                             w-full py-4
                             bg-zinc-900
@@ -164,7 +226,10 @@ export default function App() {
                     </button>
 
                     <button
-                        onClick={() => setScreen("options")}
+                        onClick={() => {
+                            void game.audio.buttonClick();
+                            setScreen("options");
+                        }}
                         className="
                             w-full py-4
                             bg-zinc-900

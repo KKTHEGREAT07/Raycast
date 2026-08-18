@@ -28,11 +28,23 @@ export default class Canvas{
 
     renderMinimap(map: number[][], player: Player) {
         const tileSize = 10;
-        const minimapWidth = map[0].length * tileSize;
-        const minimapHeight = map.length * tileSize;
 
         // Clear minimap region
-        this.ctx.clearRect(0, 0, minimapWidth, minimapHeight);
+        this.ctx.clearRect(0, 0, 100, 100);
+
+        this.ctx.save();
+
+
+        this.ctx.beginPath();
+        this.ctx.rect(0, 0, 100, 100);
+        this.ctx.clip();
+
+        this.ctx.translate(50,50);
+        this.ctx.rotate((player.angle-90)*Math.PI/180);
+        this.ctx.translate(
+            -player.x * tileSize,
+            -player.y * tileSize
+        );
 
         //render map layout
         this.ctx.fillStyle = "red";
@@ -72,6 +84,8 @@ export default class Canvas{
             playerCanvasY + Math.sin(-player.angle * Math.PI / 180) * 12
         );
         this.ctx.stroke();
+
+        this.ctx.restore();
     }
 
     renderRaycasting(map: number[][], player: Player) {
@@ -191,8 +205,8 @@ export default class Canvas{
                     cameraAngle * Math.PI / 180
                 );
  
-            const wallHeight = screenWidth / correctedDistance;
-            const wallTop = (screenWidth - wallHeight) / 2;
+            const wallHeight = screenHeight / correctedDistance;
+            const wallTop = (screenHeight - wallHeight) / 2;
 
             const hitX = player.x + dx * distance;
             const hitY = player.y + dy * distance;
@@ -209,7 +223,7 @@ export default class Canvas{
 
             this.ctx.drawImage(this.texture, textureX, 0, 1, this.texture.height, column, wallTop, 1, wallHeight);
 
-            const maxDistance = 15; // Distance at which walls become completely black
+            const maxDistance = 50; // Distance at which walls become completely black
             let shadow = correctedDistance / maxDistance;
 
             if (shadow < 0) shadow = 0;
@@ -218,24 +232,24 @@ export default class Canvas{
             this.ctx.fillStyle = `rgba(0, 0, 0, ${shadow})`;
             this.ctx.fillRect(column, wallTop, 1, wallHeight);
 
-            if (column === 0 || column === Math.floor(screenWidth / 2) || column === screenWidth - 1) {
-                console.log(
-                    "column:",
-                    column,
-                    "cameraAngle:",
-                    cameraAngle,
-                    "rayAngle:",
-                    rayAngle,
-                    "dx:",
-                    dx,
-                    "dy:",
-                    dy,
-                    "MapX:",
-                    mapX,
-                    "MapY:",
-                    mapY
-                );
-            }
+            // if (column === 0 || column === Math.floor(screenWidth / 2) || column === screenWidth - 1) {
+            //     console.log(
+            //         "column:",
+            //         column,
+            //         "cameraAngle:",
+            //         cameraAngle,
+            //         "rayAngle:",
+            //         rayAngle,
+            //         "dx:",
+            //         dx,
+            //         "dy:",
+            //         dy,
+            //         "MapX:",
+            //         mapX,
+            //         "MapY:",
+            //         mapY
+            //     );
+            // }
         }
     }
 }

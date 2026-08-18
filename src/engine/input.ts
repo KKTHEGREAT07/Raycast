@@ -34,7 +34,7 @@ export default class Input {
         };
 
         this.handleMouseMove = (e: MouseEvent) => {
-            this.mouseX += e.movementX;
+            this.mouseX += e.movementX*0.25;
         };
 
         this.handleBlur = () => {
