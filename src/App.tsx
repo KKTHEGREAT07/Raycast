@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Game from "./engine/game";
 import OptionsPanel from "./components/OptionsPanel";
+import GameHud from "./components/GameHud";
 
 export default function App() {
     const gameRef = useRef(new Game());
@@ -15,12 +16,20 @@ export default function App() {
     const [effectsVolume, setEffectsVolume] = useState(1);
 
     const game = gameRef.current;
+    const [hud, setHud] = useState(() => game.getHudState());
 
     useEffect(() => {
         game.onPauseChange = setPaused;
 
         return () => {
             game.onPauseChange = null;
+        };
+    }, [game]);
+
+    useEffect(() => {
+        game.onHudChange = setHud;
+        return () => {
+            game.onHudChange = null;
         };
     }, [game]);
 
@@ -59,6 +68,15 @@ export default function App() {
                 <canvas
                     ref={canvasRef}
                     className="w-full h-full"
+                />
+
+                <GameHud
+                    hud={hud}
+                    onSell={() => game.sellCarriedItem()}
+                    onCloseBooth={() => game.closeBooth()}
+                    onBuyAmmo={() => game.buyAmmo()}
+                    onBuyLife={() => game.buyLife()}
+                    onBuyTeleporter={() => game.buyTeleporter()}
                 />
 
                 {paused && (

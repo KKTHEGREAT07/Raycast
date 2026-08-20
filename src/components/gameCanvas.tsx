@@ -1,4 +1,7 @@
 import type Player from "../world/player";
+import { WALL_TEXTURE_MESSAGES } from "../world/wallTextures";
+
+type WallTexture = HTMLImageElement | HTMLCanvasElement;
 
 export default class Canvas{
     width:number;
@@ -7,7 +10,9 @@ export default class Canvas{
     canvasRef:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
 
-    texture = new Image();
+    private wallTextures = new Map<number, WallTexture>();
+    private missingWallTextures = new Set<number>();
+    private baseTexture = new Image();
 
     constructor(canvasRef:HTMLCanvasElement,width:number,height:number){
         this.canvasRef=canvasRef;
@@ -23,10 +28,85 @@ export default class Canvas{
             canvasRef.requestPointerLock();
         });
 
-        this.texture.src="../../image.png";
+        this.baseTexture.src = "/image.png";
+        this.wallTextures.set(1, this.baseTexture);
     }
 
-    renderMinimap(map: number[][], player: Player) {
+    private getWallTexture(wallId: number): WallTexture {
+        if (this.missingWallTextures.has(wallId)) return this.baseTexture;
+
+        let texture = this.wallTextures.get(wallId);
+        if (!texture) {
+            const message = WALL_TEXTURE_MESSAGES[wallId];
+            if (message) {
+                texture = this.createTextWallTexture(message, wallId);
+            } else {
+                const image = new Image();
+                image.src = `/walls/${wallId}.png`;
+                image.onerror = () => this.missingWallTextures.add(wallId);
+                texture = image;
+            }
+            this.wallTextures.set(wallId, texture);
+        }
+
+        const width = texture instanceof HTMLImageElement ? texture.naturalWidth : texture.width;
+        return width > 0 ? texture : this.baseTexture;
+    }
+
+    private createTextWallTexture(message: string, wallId: number): HTMLCanvasElement {
+        const texture = document.createElement("canvas");
+        texture.width = 512;
+        texture.height = 512;
+        const ctx = texture.getContext("2d")!;
+        const accent = wallId === 9 ? "#ff4f43" : wallId === 4 ? "#ffbd4a" : "#58d9d0";
+
+        ctx.fillStyle = "#17191d";
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = "#252930";
+        ctx.fillRect(20, 20, 472, 472);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 8;
+        ctx.strokeRect(24, 24, 464, 464);
+        ctx.fillStyle = accent;
+        ctx.fillRect(40, 54, 432, 5);
+        ctx.font = "bold 25px monospace";
+        ctx.textAlign = "left";
+        ctx.fillText("FIELD GUIDE // TIP", 44, 44);
+
+        ctx.font = "bold 31px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const lines: string[] = [];
+        let line = "";
+        for (const word of message.toUpperCase().split(/\s+/)) {
+            const candidate = line ? `${line} ${word}` : word;
+            if (ctx.measureText(candidate).width > 400 && line) {
+                lines.push(line);
+                line = word;
+            } else {
+                line = candidate;
+            }
+        }
+        if (line) lines.push(line);
+
+        const lineHeight = 44;
+        const firstLineY = 274 - ((lines.length - 1) * lineHeight) / 2;
+        ctx.fillStyle = "#f1f0e8";
+        lines.forEach((text, index) => {
+            ctx.fillText(text, 256, firstLineY + index * lineHeight, 410);
+        });
+
+        ctx.fillStyle = accent;
+        ctx.fillRect(40, 450, 432, 5);
+        return texture;
+    }
+
+    renderMinimap(
+        map: number[][],
+        player: Player,
+        markers: Array<{ x: number; y: number; color: string }> = []
+    ) {
         const tileSize = 10;
 
         // Clear minimap region
@@ -50,11 +130,21 @@ export default class Canvas{
         this.ctx.fillStyle = "red";
         for (let y = 0; y < map.length; y++) {
             for (let x = 0; x < map[y].length; x++) {
-                if (map[y][x] === 1) {
+                if (map[y][x] > 0) {
                     // x goes right, y goes down
                     this.ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 }
             }
+        }
+
+        for (const marker of markers) {
+            this.ctx.fillStyle = marker.color;
+            this.ctx.fillRect(
+                marker.x * tileSize - 3,
+                marker.y * tileSize - 3,
+                6,
+                6
+            );
         }
 
         // player coords to screen coords
@@ -163,7 +253,8 @@ export default class Canvas{
             }
 
             let distance = 0;
-            let hitside;
+            let hitSide: "vertical" | "horizontal" = "vertical";
+            let wallId = 1;
 
             while (true) {
 
@@ -173,11 +264,12 @@ export default class Canvas{
                     sideDistX += deltaDistX;
                     mapX += stepX;
 
-                    if (map[mapY][mapX] === 1) {
+                    if ((map[mapY]?.[mapX] ?? 1) > 0) {
 
                         distance =
                             sideDistX - deltaDistX;
-                        hitside="vertical";
+                        hitSide = "vertical";
+                        wallId = map[mapY]?.[mapX] ?? 1;
                         break;
                     }
 
@@ -189,11 +281,12 @@ export default class Canvas{
                     sideDistY += deltaDistY;
                     mapY += stepY;
 
-                    if (map[mapY][mapX] === 1) {
+                    if ((map[mapY]?.[mapX] ?? 1) > 0) {
 
                         distance =
                             sideDistY - deltaDistY;
-                        hitside="horizontal";
+                        hitSide = "horizontal";
+                        wallId = map[mapY]?.[mapX] ?? 1;
                         break;
                     }
                 }
@@ -213,15 +306,36 @@ export default class Canvas{
 
             let wallPosition;
 
-            if (hitside==="vertical") {
+            if (hitSide === "vertical") {
                 wallPosition = hitY - Math.floor(hitY);
             } else {
                 wallPosition = hitX - Math.floor(hitX);
             }
 
-            const textureX =Math.floor(wallPosition * this.texture.width);
-
-            this.ctx.drawImage(this.texture, textureX, 0, 1, this.texture.height, column, wallTop, 1, wallHeight);
+            const texture = this.getWallTexture(wallId);
+            const textureWidth = texture instanceof HTMLImageElement
+                ? texture.naturalWidth
+                : texture.width;
+            const textureHeight = texture instanceof HTMLImageElement
+                ? texture.naturalHeight
+                : texture.height;
+            if (textureWidth > 0 && textureHeight > 0) {
+                const textureX = Math.min(
+                    textureWidth - 1,
+                    Math.floor(wallPosition * textureWidth)
+                );
+                this.ctx.drawImage(
+                    texture,
+                    textureX,
+                    0,
+                    1,
+                    textureHeight,
+                    column,
+                    wallTop,
+                    1,
+                    wallHeight
+                );
+            }
 
             const maxDistance = 50; // Distance at which walls become completely black
             let shadow = correctedDistance / maxDistance;
